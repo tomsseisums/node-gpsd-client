@@ -10,6 +10,7 @@ function Gpsd (options) {
   this.parse = options.parse !== undefined ? options.parse : true
   this.reconnectInterval = options.reconnectInterval || 0
   this.reconnectThreshold = options.reconnectThreshold || 0
+  this.reconnectIntervalHandle = null
   this.connected = false
   this.socket = new net.Socket()
   this.socket.setEncoding('ascii')
@@ -93,10 +94,6 @@ function Gpsd (options) {
     this.emit('socket', err)
   }
 
-  if (this.reconnectInterval > 0 && this.reconnectThreshold > 0) {
-    setInterval(this.reconnect, this.reconnectInterval * 1000)
-  }
-
   return this
 }
 
@@ -112,9 +109,15 @@ Gpsd.prototype.connect = function (callback) {
       callback(sock)
     })
   }
+  
+  if (this.reconnectInterval > 0 && this.reconnectThreshold > 0 && this.reconnectIntervalHandle === null) {
+    this.reconnectIntervalHandle = setInterval(this.reconnect, this.reconnectInterval * 1000)
+  }
 }
 
 Gpsd.prototype.disconnect = function (callback) {
+  clearInterval(this.reconnectIntervalHandle)
+  this.reconnectIntervalHandle = null
   this.unwatch()
   this.socket.end()
 
